@@ -1,0 +1,55 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.optimize import minimize
+
+earth_radius = 6371  
+geo_orbit_radius = 42164  # Geostationary orbit radius in km (Earth radius + altitude)
+signal_speed = 3e8  # Speed of signal in m/s
+
+def simulate_orbit(t, orbital_radius):
+    angular_velocity = 2 * np.pi / (24 * 3600)  
+    x = orbital_radius * np.cos(angular_velocity * t)
+    y = orbital_radius * np.sin(angular_velocity * t)
+    return x, y
+
+def signal_strength(distance, interference_factor):
+    base_strength = 1 / (distance**2) 
+    return base_strength * np.exp(-interference_factor * distance)
+
+def optimize_signal(params):
+    satellite_x, satellite_y = params
+    ground_station_x, ground_station_y = 0, -earth_radius  # Ground station at Earth's surface
+
+    distance = np.sqrt((satellite_x - ground_station_x)**2 + (satellite_y - ground_station_y)**2)
+
+    interference_factor = 0.00001 * distance  # Simplified model
+
+    strength = signal_strength(distance, interference_factor)
+    return -strength 
+
+initial_position = [geo_orbit_radius, 0]
+
+
+result = minimize(optimize_signal, initial_position, bounds=[(-geo_orbit_radius, geo_orbit_radius),
+                                                             (-geo_orbit_radius, geo_orbit_radius)])
+
+optimized_position = result.x
+optimized_strength = -result.fun
+
+print("Optimized Satellite Position:", optimized_position)
+print("Optimized Signal Strength:", optimized_strength)
+
+time = np.linspace(0, 24 * 3600, 1000)
+orbit_x, orbit_y = simulate_orbit(time, geo_orbit_radius)
+
+plt.figure(figsize=(8, 8))
+plt.plot(orbit_x, orbit_y, label="Satellite Orbit")
+plt.scatter(0, -earth_radius, color='red', label="Ground Station")
+plt.scatter(optimized_position[0], optimized_position[1], color='blue', label="Optimized Position")
+plt.xlabel("X Position (km)")
+plt.ylabel("Y Position (km)")
+plt.title("Optimized Satellite Communication")
+plt.legend()
+plt.grid()
+plt.axis('equal')
+plt.show()
